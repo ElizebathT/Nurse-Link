@@ -21,7 +21,12 @@ const carePlanController = {
             appointments,
             notes
         });
+        const notification = new Notification({
+            user: patientId,  // Assuming the notification is for the patient
+            message: `A new CarePlan has been created with your health goals: ${healthGoals.join(", ")}.`,
+        });
 
+        await notification.save();
         res.status(201).json(carePlan);
     }),
 
@@ -84,7 +89,12 @@ const carePlanController = {
 
         // Save the updated CarePlan
         const updatedCarePlan = await carePlan.save();
+        const notification = new Notification({
+            user: carePlan.patientId,  // Assuming the notification is for the patient
+            message: `Your CarePlan has been updated with new health goals: ${healthGoals.join(", ")}.`,
+        });
 
+        await notification.save(); 
         res.status(200).json(updatedCarePlan);
     }),
 

@@ -2,6 +2,7 @@ const Appointment = require("../models/appointmentModel");
 const asyncHandler = require("express-async-handler");
 const Patient = require("../models/patientModel");
 const HealthcareProvider = require("../models/healthProviderModel");
+const Notification = require("../models/notificationModel");
 // const { google } = require('googleapis');
 
 // const credentials = require('../credentials.json');
@@ -44,6 +45,13 @@ const appointmentController = {
 
     provider.appointments.push(appointment._id);
     await provider.save();
+
+    const patientNotification = new Notification({
+      user: patientId,
+      message: `A new appointment with ${provider.name} has been created for you.`,
+    });
+    await patientNotification.save();
+
     if (appointment) {
     //   // Set the access token for the OAuth2 client
     //   oAuth2Client.setCredentials({ access_token: accessToken });
@@ -126,7 +134,11 @@ const appointmentController = {
       appointment.reminders = reminders || appointment.reminders;
 
       const updatedAppointment = await appointment.save();
-
+      const patientNotification = new Notification({
+        user: appointment.patientId,
+        message: `Your appointment with ${appointment.providerId.name} has been updated.`,
+      });
+      await patientNotification.save();
       res.status(200).json({updatedAppointment
       });
     } else {
@@ -141,14 +153,19 @@ const appointmentController = {
     const appointment = await Appointment.findById(id);
     const patient=await Patient.findById(appointment.patientId)
     const provider=await HealthcareProvider.findById(appointment.providerId)
-    if (patient && Array.isArray(patient.appointments)) {
+    if (patient && patient.appointments) {
       patient.appointments.pull(appointment._id);
       await patient.save();
-    } 
-    if (provider && Array.isArray(provider.appointments)) {
-    provider.appointments.pull(appointment._id);
-    await provider.save();
     }
+    if (provider && provider.appointments) {
+        provider.appointments.pull(appointment._id);
+        await provider.save();
+    }
+    const patientNotification = new Notification({
+      user: appointment.patientId,
+      message: `Your appointment with ${appointment.providerId.name} has been canceled.`,
+    });
+    await patientNotification.save();
     if (appointment) {
       await appointment.deleteOne();
       res.status(200).json({ message: "Appointment deleted successfully" });

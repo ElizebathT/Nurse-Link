@@ -7,9 +7,9 @@ const userController={
     register : asyncHandler(async(req,res)=>{        
       const {username,email,password,role}=req.body
       const userExits=await User.findOne({email})
-      if(userExits){
-          throw new Error("User already exists")
-      }
+      if (userExits) {
+        return res.status(409).json({ message: "User already exists" });
+    }    
       const hashed_password=await bcrypt.hash(password,10)
       const userCreated=await User.create({
           username,
@@ -40,7 +40,7 @@ const userController={
         if(!userExist){
             throw new Error("User not found")
         }
-        const passwordMatch= bcrypt.compare(userExist.password,password)
+        const passwordMatch= bcrypt.compare(password, userExist.password)
         if(!passwordMatch){
             throw new Error("Passwords not matching")
         }
@@ -55,7 +55,8 @@ const userController={
             http:true,
             secure:false
         })        
-        res.send("Login successful")
+        res.json({ message: "Login successful", token });
+
         }),
 
     logout:asyncHandler(async(req,res)=>{
@@ -78,7 +79,6 @@ const userController={
             user.role = role || user.role;
             user.phone = phone || user.phone;
             user.address = address || user.address;
-            user.profilePic = profilePic || user.profilePic;
             const updatedUser = await user.save();
             if (!updatedUser) {
                 return res.status(500).json({ message: "Error updating profile" });
