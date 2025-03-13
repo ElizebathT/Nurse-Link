@@ -18,12 +18,16 @@ const healthcareProviderSchema = new mongoose.Schema({
   licenseNumber: {
     type: String,
     required: true,
-    unique: true, // Ensure each provider has a unique license number
+    unique: true, 
   },
   appointments: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Appointment'
 }],
+verified:{
+  type:Boolean,
+  default:false
+}
 },{timestamps:true});
 
 // Create the HealthcareProvider model

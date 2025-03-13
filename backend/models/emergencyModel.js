@@ -11,10 +11,8 @@ const emergencyAssistanceSchema = new mongoose.Schema({
         type: Date,
         default: Date.now, // Automatically sets the current date and time
     },
-    location: {
-        type: String,
-        required: true,
-    },
+    location: 
+        { lat: Number, lng: Number },
     status: {
         type: String,
         enum: ['resolved', 'pending'], // Only allows 'resolved' or 'pending'

@@ -1,13 +1,14 @@
 const EmergencyAssistance = require("../models/emergencyModel");
 const asyncHandler = require("express-async-handler");
+const Patient = require("../models/patientModel");
 
 const emergencyAssistanceController = {
   // Create a new Emergency Assistance request
   createEmergencyAssistance: asyncHandler(async (req, res) => {
-    const { patientId, location } = req.body;
-
+    const { location } = req.body;
+    const patient=await Patient.findOne({user:req.user.id})
     const newEmergencyAssistance = new EmergencyAssistance({
-      patientId,
+      patientId:patient.id,
       location,
     });
 
@@ -23,8 +24,8 @@ const emergencyAssistanceController = {
 
   // Get a single Emergency Assistance request by ID
   getEmergencyAssistanceById: asyncHandler(async (req, res) => {
-    const { id } = req.body;
-    const emergencyAssistanceRequest = await EmergencyAssistance.findById(id).populate('patientId');
+    const patient=await Patient.findOne({user:req.user.id})
+    const emergencyAssistanceRequest = await EmergencyAssistance.findOne({patientId:patient.id}).populate('patientId');
 
     if (!emergencyAssistanceRequest) {
       res.status(404);
@@ -37,7 +38,6 @@ const emergencyAssistanceController = {
   // Update an Emergency Assistance request by ID
   updateEmergencyAssistance: asyncHandler(async (req, res) => {
     const { id,status } = req.body;
-
     const updatedEmergencyAssistance = await EmergencyAssistance.findByIdAndUpdate(
       id,
       { status:status || 'resolved' },
@@ -54,7 +54,7 @@ const emergencyAssistanceController = {
 
   // Delete an Emergency Assistance request by ID
   deleteEmergencyAssistance: asyncHandler(async (req, res) => {
-    const { id } = req.body;
+    const { id } = req.params;
     const deletedEmergencyAssistance = await EmergencyAssistance.findByIdAndDelete(id);
 
     if (!deletedEmergencyAssistance) {

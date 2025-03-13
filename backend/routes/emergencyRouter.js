@@ -7,6 +7,6 @@ emergencyRouter.post("/add", userAuthentication,emergencyAssistanceController.cr
 emergencyRouter.get("/viewall", userAuthentication,emergencyAssistanceController.getAllEmergencyAssistance);
 emergencyRouter.get("/search", userAuthentication,emergencyAssistanceController.getEmergencyAssistanceById);
 emergencyRouter.put("/edit", userAuthentication,emergencyAssistanceController.updateEmergencyAssistance);
-emergencyRouter.delete("/delete", userAuthentication,emergencyAssistanceController.deleteEmergencyAssistance);
+emergencyRouter.delete("/delete/:id", userAuthentication,emergencyAssistanceController.deleteEmergencyAssistance);
 
 module.exports = emergencyRouter;

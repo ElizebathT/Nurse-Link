@@ -8,17 +8,16 @@ const CarePlanSchema = new mongoose.Schema({
         required: true
     },
     healthGoals: {
-        type: [String],
-        default: []
+        type: String,
     },
     medications: {
-        type: [String],
-        default: []
+        type: String,
     },
-    appointments: {
-        type: [String],
-        default: []
-    },
+    appointments: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Appointment',
+        required: true
+    }],
     notes: {
         type: String,
         default: ''

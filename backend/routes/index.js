@@ -9,6 +9,7 @@ const emergencyRouter = require("./emergencyRouter");
 const resourceRouter = require("./resourceRouter");
 const familyRouter = require("./familyRouter");
 const notificationRouter = require("./notificationRouter");
+const adminRoutes = require("./adminRouter");
 const router=express()
 
 router.use("/users", userRoutes);
@@ -20,6 +21,7 @@ router.use("/healthprovider", healthcareProviderRouter);
 router.use("/medicalrecord", medicalRecordRouter);
 router.use("/resources", resourceRouter);
 router.use("/family", familyRouter);
+router.use("/admin", adminRoutes);
 router.use("/notification", notificationRouter);
 
 module.exports=router

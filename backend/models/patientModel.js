@@ -3,6 +3,12 @@ const Schema = mongoose.Schema;
 
 // Define the Patient schema
 const patientSchema = new Schema({
+    user: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "User",
+        required: true
+    },
+   
     name: {
         type: String,
         required: true // Name is essential for identification
@@ -12,7 +18,7 @@ const patientSchema = new Schema({
         default: ''
     },
     medicalRecord: {
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'MedicalRecord', // Reference to the CarePlan model
         default: null
     },
@@ -25,26 +31,16 @@ const patientSchema = new Schema({
         default: ''
     },
     emergencyContact: {
-        name: {
-            type: String,
-            default: ''
-        },
-        phone: {
-            type: String,
-            default: ''
-        },
-        relationship: {
-            type: String,
-            default: ''
-        }
+        type: String,
+        default: ''
     },
-    carePlanId: {
-        type: Schema.Types.ObjectId,
-        ref: 'CarePlan', // Reference to the CarePlan model
+    carePlanId: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'CarePlan', 
         default: null
-    },
+    }],
     appointments: [{
-        type: Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'Appointment'
     }],
 }, {

@@ -24,7 +24,7 @@ const medicalRecordSchema = new mongoose.Schema({
     type: [String], // Array of treatment history entries
     default: [],
   },
-});
+},{ timestamps: true });
 
 // Create the MedicalRecord model
 const MedicalRecord = mongoose.model('MedicalRecord', medicalRecordSchema);

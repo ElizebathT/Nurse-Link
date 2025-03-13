@@ -4,21 +4,22 @@ const asyncHandler = require("express-async-handler");
 const patientController = {
     // Create a new patient profile
     createPatient: asyncHandler(async (req, res) => {
-        const { name, age, gender, medicalRecord, details, emergencyContact ,carePlanId} = req.body;
+        const { name, age, gender, details, emergencyContact, ongoingTreatments, allergies} = req.body;
 
         if (!name || !age || !gender) {
             res.status(400);
             throw new Error("Please provide all required fields: name, age, gender");
         }
-
+        
         const patient = await Patient.create({
+            user:req.user.id,
             name,
             age,
             gender,
-            medicalRecord,
             details,
             emergencyContact,
-            carePlanId
+            ongoingTreatments, 
+            allergies
         });
 
         res.status(201).json(patient);
@@ -76,14 +77,11 @@ const patientController = {
     deletePatient: asyncHandler(async (req, res) => {
         const {id}=req.body
         const patient = await Patient.findById(id);
-
         if (!patient) {
             res.status(404);
             throw new Error("Patient not found");
         }
-
         await patient.remove();
-
         res.status(200).json({ message: "Patient deleted successfully" });
     }),
 };

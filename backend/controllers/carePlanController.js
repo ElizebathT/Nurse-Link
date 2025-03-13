@@ -1,11 +1,18 @@
 const CarePlan = require("../models/carePlanModel");
 const asyncHandler = require("express-async-handler");
+const Patient = require("../models/patientModel");
+const HealthcareProvider = require("../models/healthProviderModel");
 
 const carePlanController = {
     // Create a new CarePlan
     createCarePlan: asyncHandler(async (req, res) => {
         const { patientId, healthGoals, medications, appointments, notes } = req.body;
+        const provider = await HealthcareProvider.findOne({ user: req.user._id });
 
+        if (!provider || !provider.verified) {
+            res.status(403);
+            throw new Error("Access denied. Only verified healthcare providers can create a CarePlan.");
+        }
         // Check if the carePlanId already exists
         const existingCarePlan = await CarePlan.findOne({ patientId, healthGoals});
         if (existingCarePlan) {
@@ -21,6 +28,13 @@ const carePlanController = {
             appointments,
             notes
         });
+
+        const patient = await Patient.findByIdAndUpdate(
+            patientId,
+            { $push: { carePlanId: carePlan._id } },  
+            { new: true } 
+        );
+
         const notification = new Notification({
             user: patientId,  // Assuming the notification is for the patient
             message: `A new CarePlan has been created with your health goals: ${healthGoals.join(", ")}.`,
@@ -73,27 +87,22 @@ const carePlanController = {
     // Update a CarePlan by ID
     updateCarePlan: asyncHandler(async (req, res) => {
         const { id, healthGoals, medications, appointments, notes } = req.body;
-
         const carePlan = await CarePlan.findById(id);
-
         if (!carePlan) {
             res.status(404);
             throw new Error("CarePlan not found.");
         }
-
         // Update fields if provided
         if (healthGoals) carePlan.healthGoals = healthGoals;
         if (medications) carePlan.medications = medications;
         if (appointments) carePlan.appointments = appointments;
         if (notes) carePlan.notes = notes;
-
         // Save the updated CarePlan
         const updatedCarePlan = await carePlan.save();
         const notification = new Notification({
             user: carePlan.patientId,  // Assuming the notification is for the patient
             message: `Your CarePlan has been updated with new health goals: ${healthGoals.join(", ")}.`,
         });
-
         await notification.save(); 
         res.status(200).json(updatedCarePlan);
     }),
@@ -109,10 +118,13 @@ const carePlanController = {
         }
 
         await carePlan.deleteOne();
-
+        await Patient.findByIdAndUpdate(
+            carePlan.patientId, 
+            { $pull: { carePlanId: carePlan._id } }, 
+            { new: true }
+        );
         res.status(200).json({ message: "CarePlan deleted successfully." });
     }),
-
 };
 
 module.exports = carePlanController;

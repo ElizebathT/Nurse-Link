@@ -4,12 +4,12 @@ const { Schema } = mongoose;
 // Define the Appointment schema
 const appointmentSchema = new Schema({
   patientId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Patient', // Reference to the Patient model
     required: true,
   },
   providerId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'HealthcareProvider', // Reference to the Healthcare Provider model
     required: true,
   },
