@@ -1,4 +1,3 @@
-const HealthcareProvider = require("../models/healthProviderModel");
 const MedicalRecord = require("../models/medicalRecordModel");
 const asyncHandler = require("express-async-handler");
 
@@ -6,12 +5,6 @@ const medicalRecordController = {
   // Create a new medical record
   createMedicalRecord: asyncHandler(async (req, res) => {
     const { patientId, diagnosis, prescriptions, treatmentHistory } = req.body;
-    const provider = await HealthcareProvider.findOne({ user: req.user._id });
-
-    if (!provider || !provider.verified) {
-        res.status(403);
-        throw new Error("Access denied. Only verified healthcare providers can create a MedicalRecord.");
-    }
     const exist=await MedicalRecord.findOne({patientId})
     if(exist){
         throw new Error("Record exist")

@@ -1,37 +1,59 @@
 const asyncHandler = require("express-async-handler");
-const HealthcareProvider = require("../models/healthProviderModel");
 const User = require("../models/userModel");
+const Patient = require("../models/patientModel");
 
 const adminController = {
     // Approve a provider
     approveProvider: asyncHandler(async (req, res) => {
-        const { providerId } = req.body;
-        const provider = await HealthcareProvider.findById(providerId);
+        const { id } = req.body;
+        const provider = await User.findById(id);
 
         if (!provider) {
             res.status(404);
-            throw new Error("HealthcareProvider not found");
+            throw new Error("User not found");
         }
 
         provider.verified = true;
         await provider.save();
 
-        res.json({ message: "HealthcareProvider approved successfully" });
+        res.json({ message: "User approved successfully" });
     }),
-
+    assignNurseToPatient: asyncHandler(async (req, res) => {
+        if (req.user.role !== "admin") {
+            return res.status(403).json({ message: "Only admins can assign nurses to patients" });
+        }
+    
+        const { patientId, nurseId } = req.body;
+    
+        const patient = await Patient.findById(patientId);
+        if (!patient) {
+            return res.status(404).json({ message: "Patient not found" });
+        }
+    
+        const nurse = await User.findById(nurseId);
+        if (!nurse || nurse.role !== "nurse") {
+            return res.status(404).json({ message: "Nurse not found or invalid role" });
+        }
+    
+        patient.assignedNurse = nurseId; // Assuming Patient schema has `assignedNurse`
+        await patient.save();
+    
+        res.status(200).json({ message: "Nurse assigned successfully", patient });
+    }),
+    
     // Reject a provider
-    rejectHealthcareProvider: asyncHandler(async (req, res) => {
-        const { providerId } = req.body;
-        const provider = await HealthcareProvider.findById(providerId);
+    rejectUser: asyncHandler(async (req, res) => {
+        const { id } = req.body;
+        const provider = await User.findById(id);
 
         if (!provider) {
             res.status(404);
-            throw new Error("HealthcareProvider not found");
+            throw new Error("User not found");
         }
 
-        await HealthcareProvider.findByIdAndDelete(providerId);
+        await User.findByIdAndDelete(id);
 
-        res.json({ message: "HealthcareProvider rejected and removed" });
+        res.json({ message: "User rejected and removed" });
     }),
 
     // Get all users

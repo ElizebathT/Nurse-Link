@@ -30,10 +30,12 @@ const patientSchema = new Schema({
         type: String,
         default: ''
     },
+    gender: { type: String, enum: ["male", "female", "other"], required: true },
     emergencyContact: {
         type: String,
         default: ''
     },
+    age: { type: Number, required: true },
     carePlanId: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'CarePlan', 
@@ -43,6 +45,7 @@ const patientSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Appointment'
     }],
+    assignedNurse: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 }, {
     timestamps: true 
 });

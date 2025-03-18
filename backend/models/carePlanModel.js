@@ -1,4 +1,3 @@
-// models/CarePlan.js
 const mongoose = require('mongoose');
 
 const CarePlanSchema = new mongoose.Schema({
@@ -7,16 +6,11 @@ const CarePlanSchema = new mongoose.Schema({
         ref: 'Patient',
         required: true
     },
-    healthGoals: {
-        type: String,
-    },
-    medications: {
-        type: String,
-    },
+    healthGoals: [{ type: String }],  // Changed to array
+    medications: [{ type: String }],  // Changed to array
     appointments: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Appointment',
-        required: true
+        ref: 'Appointment'
     }],
     notes: {
         type: String,
@@ -28,12 +22,11 @@ const CarePlanSchema = new mongoose.Schema({
     }
 });
 
-// Update the `updatedAt` field before saving the document
+// Auto-update `updatedAt` before saving
 CarePlanSchema.pre('save', function(next) {
     this.updatedAt = Date.now();
     next();
 });
 
 const CarePlan = mongoose.model('CarePlan', CarePlanSchema);
-
 module.exports = CarePlan;

@@ -17,7 +17,7 @@ const UserSchema = new mongoose.Schema({
   },
   role: { 
     type: String, 
-    enum: ["caregiver", "healthcare", "patient", "family", "admin"], 
+    enum: ["nurse", "admin", "doctor", "patient", "family"], 
     default: "family",
     required: true 
   },
@@ -26,6 +26,13 @@ const UserSchema = new mongoose.Schema({
   },
   address:{ 
       type:  String,
+  },
+  license:{ 
+    type:  String,
+},
+  verified: { 
+    type: Boolean, 
+    default: false // Users are unverified by default
   },
 }, { timestamps: true });
 

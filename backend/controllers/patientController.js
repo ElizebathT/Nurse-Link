@@ -3,26 +3,38 @@ const asyncHandler = require("express-async-handler");
 
 const patientController = {
     // Create a new patient profile
-    createPatient: asyncHandler(async (req, res) => {
-        const { name, age, gender, details, emergencyContact, ongoingTreatments, allergies} = req.body;
-
-        if (!name || !age || !gender) {
-            res.status(400);
-            throw new Error("Please provide all required fields: name, age, gender");
+    createOrUpdatePatient: asyncHandler(async (req, res) => {
+        if (req.user.role !== "patient") {
+            return res.status(403).json({ message: "Only patients can create or update profiles" });
         }
-        
-        const patient = await Patient.create({
-            user:req.user.id,
-            name,
-            age,
-            gender,
-            details,
-            emergencyContact,
-            ongoingTreatments, 
-            allergies
-        });
 
-        res.status(201).json(patient);
+        const { name, age, gender, details, emergencyContact, ongoingTreatments, allergies } = req.body;
+        let patient = await Patient.findOne({ user: req.user.id });
+
+        if (!patient) {
+            patient = new Patient({ user: req.user.id });
+        }
+
+        patient.name = name || patient.name;
+        patient.age = age || patient.age;
+        patient.gender = gender || patient.gender;
+        patient.details = details || patient.details;
+        patient.emergencyContact = emergencyContact || patient.emergencyContact;
+        patient.ongoingTreatments = ongoingTreatments || patient.ongoingTreatments;
+        patient.allergies = allergies || patient.allergies;
+
+        await patient.save();
+        res.status(200).json(patient);
+    }),
+
+    // Fetch patient details (only their own)
+    getMyPatientProfile: asyncHandler(async (req, res) => {
+        const patient = await Patient.findOne({ user: req.user.id }).populate("user", "-password");
+        if (!patient) {
+            return res.status(404).json({ message: "Patient profile not found" });
+        }
+
+        res.status(200).json(patient);
     }),
 
     // Fetch patient details with search queries

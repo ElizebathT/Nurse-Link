@@ -1,179 +1,165 @@
 const Appointment = require("../models/appointmentModel");
 const asyncHandler = require("express-async-handler");
-const Patient = require("../models/patientModel");
-const HealthcareProvider = require("../models/healthProviderModel");
-const Notification = require("../models/notificationModel");
-// const { google } = require('googleapis');
 
-// const credentials = require('../credentials.json');
-// const { client_secret, client_id, redirect_uris } = credentials.web;
-// const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
-
-// async function getCalendarClient(auth) {
-//   return google.calendar({ version: 'v3', auth });
-// }
-
+// CONTROLLER FOR APPOINTMENTS
 const appointmentController = {
-  // Create a new Appointment
-  createAppointment: asyncHandler(async (req, res) => {
-    const { patientId, providerId, dateTime, status, notes, reminders } = req.body;
-    // const { patientId, providerId, dateTime, status, notes, reminders,accesstoken } = req.body;
-    const existingAppointment = await Appointment.findOne({ patientId, providerId });
-    if (existingAppointment) {
-      res.status(400);
-      throw new Error("Appointment already exists");
-    }
-    const patient=await Patient.findById(patientId)
-    if(!patient){
-      throw new Error("Patient not found")
-    }
-    const provider=await HealthcareProvider.findById(providerId)
-    if(!provider){
-      throw new Error("HealthcareProvider not found")
-    }
-    // Create the appointment
-    const appointment = await Appointment.create({
-      patientId,
-      providerId,
-      dateTime,
-      status,
-      notes,
-      reminders,
-    });
-    patient.appointments.push(appointment._id);
-    await patient.save();
+    // 📝 1. Patient Requests an Appointment
+    requestAppointment: asyncHandler(async (req, res) => {
+        if (req.user.role !== "patient") {
+            return res.status(403).json({ message: "Only patients can book appointments" });
+        }
 
-    provider.appointments.push(appointment._id);
-    await provider.save();
+        const { doctorId, date, notes } = req.body;
 
-    const patientNotification = new Notification({
-      user: patientId,
-      message: `A new appointment with ${provider.name} has been created for you.`,
-    });
-    await patientNotification.save();
+        const appointment = await Appointment.create({
+            patient: req.user.id,
+            doctor: doctorId,
+            date,
+            notes
+        });
 
-    if (appointment) {
-    //   // Set the access token for the OAuth2 client
-    //   oAuth2Client.setCredentials({ access_token: accessToken });
+        res.status(201).json({ message: "Appointment requested successfully", appointment });
+    }),
 
-    //   // Get the Google Calendar API client
-    //   const calendar = await getCalendarClient(oAuth2Client);
+    // ✅ 2. Doctor Confirms or Rejects Appointment
+    manageAppointment: asyncHandler(async (req, res) => {
+        if (req.user.role !== "doctor") {
+            return res.status(403).json({ message: "Only doctors can manage appointments" });
+        }
 
-    //   // Create an event in Google Calendar
-    //   const event = {
-    //     summary: `Appointment with ${providerId}`,
-    //     description: notes,
-    //     start: {
-    //       dateTime: dateTime,
-    //       timeZone: 'UTC',
-    //     },
-    //     end: {
-    //       dateTime: new Date(new Date(dateTime).getTime() + 60 * 60 * 1000).toISOString(), // Assuming 1 hour duration
-    //       timeZone: 'UTC',
-    //     },
-    //     reminders: {
-    //       useDefault: false,
-    //       overrides: reminders.map(reminder => ({
-    //         method: 'popup',
-    //         minutes: reminder.minutesBefore,
-    //       })),
-    //     },
-    //   };
+        const { appointmentId, status } = req.body;
+        const appointment = await Appointment.findById(appointmentId);
 
-    //   // Insert the event into Google Calendar
-    //   const calendarResponse = await calendar.events.insert({
-    //     calendarId: 'primary',
-    //     resource: event,
-    //   });
+        if (!appointment) {
+            return res.status(404).json({ message: "Appointment not found" });
+        }
 
-    //   res.status(201).json({ appointment, calendarEvent: calendarResponse.data });
-    res.status(201).send("Appointment added successfully");
-    } else {
-      res.status(400);
-      throw new Error("Invalid appointment data");
-    }
+        if (appointment.doctor.toString() !== req.user.id) {
+            return res.status(403).json({ message: "You can only manage your own appointments" });
+        }
+
+        if (!["Confirmed", "Rejected"].includes(status)) {
+            return res.status(400).json({ message: "Invalid status update" });
+        }
+
+        appointment.status = status;
+        await appointment.save();
+
+        res.status(200).json({ message: `Appointment ${status.toLowerCase()} successfully`, appointment });
+    }),
+
+    requestNurseVisit: asyncHandler(async (req, res) => {
+        if (req.user.role !== "patient") {
+            return res.status(403).json({ message: "Only patients can request nurse visits" });
+        }
+    
+        const { nurseId, date, notes, address } = req.body;
+    
+        if (!nurseId || !date || !address) {
+            return res.status(400).json({ message: "Nurse ID, date, and address are required" });
+        }
+    
+        const appointment = await Appointment.create({
+            patient: req.user.id,
+            nurse: nurseId,
+            date,
+            notes,
+            address,
+            status: "Pending"
+        });
+    
+        res.status(201).json({ message: "Nurse visit requested successfully", appointment });
+    }),
+    
+    
+
+    // ✅ 4. Doctor Completes Appointment & Adds Notes
+    completeAppointment: asyncHandler(async (req, res) => {
+        if (req.user.role !== "doctor") {
+            return res.status(403).json({ message: "Only doctors can complete appointments" });
+        }
+
+        const { appointmentId, carePlanId, notes } = req.body;
+        const appointment = await Appointment.findById(appointmentId);
+
+        if (!appointment) {
+            return res.status(404).json({ message: "Appointment not found" });
+        }
+
+        if (appointment.doctor.toString() !== req.user.id) {
+            return res.status(403).json({ message: "You can only complete your own appointments" });
+        }
+
+        appointment.status = "Completed";
+        appointment.carePlanId = carePlanId || appointment.carePlanId;
+        appointment.notes = notes || appointment.notes;
+
+        await appointment.save();
+
+        res.status(200).json({ message: "Appointment marked as completed", appointment });
+    }),
+
+    // 📌 5. Get Appointments (For Patients, Doctors, Nurses)
+    getAppointments: asyncHandler(async (req, res) => {
+        let filter = {};
+
+        if (req.user.role === "patient") {
+            filter.patient = req.user.id;
+        } else if (req.user.role === "doctor") {
+            filter.doctor = req.user.id;
+        } else if (req.user.role === "nurse") {
+            filter.nurse = req.user.id;
+        }
+
+        const appointments = await Appointment.find(filter)
+            .populate("patient", "username email")
+            .populate("doctor", "username email")
+            .populate("nurse", "username email")
+            .populate("carePlanId");
+
+        res.status(200).json(appointments);
+    }),
+
+    searchAppointments : asyncHandler(async (req, res) => {
+      const { patientName, doctorName, status, date } = req.body;
+  
+      let query = {};
+  
+      if (patientName) {
+          query["patient.name"] = { $regex: patientName, $options: "i" };
+      }
+      if (doctorName) {
+          query["doctor.name"] = { $regex: doctorName, $options: "i" };
+      }
+      if (status) {
+          query.status = status;
+      }
+      if (date) {
+          query.date = date;
+      }
+  
+      const appointments = await Appointment.find(query).populate("patient doctor nurse");
+      
+      if (!appointments.length) {
+          return res.status(404).json({ message: "No appointments found" });
+      }
+  
+      res.status(200).json(appointments);
   }),
-
-  // Get all Appointments
-  getAllAppointments: asyncHandler(async (req, res) => {
-    const appointments = await Appointment.find()
-      .populate("patientId", "name") // Populate patient details (e.g., name)
-      .populate("providerId", "name"); // Populate provider details (e.g., name)
-
-    res.status(200).json(appointments);
-  }),
-
-  // Get a single Appointment by ID
-  getAppointmentById: asyncHandler(async (req, res) => {
-    const {patientId,providerId}=req.body
-    const searchCondition = {};
-    if (patientId) searchCondition.patientId = patientId;
-    if (providerId) searchCondition.providerId = providerId;
-    const appointment = await Appointment.find(searchCondition)
-      .populate("patientId", "name")
-      .populate("providerId", "name specialty");
-
-    if (appointment) {
-      res.status(200).json(appointment);
-    } else {
-      res.status(404);
-      throw new Error("Appointment not found");
-    }
-  }),
-
-  // Update an Appointment
-  updateAppointment: asyncHandler(async (req, res) => {
-    const { id, dateTime, status, notes, reminders } = req.body;
-
-    const appointment = await Appointment.findById(id);
-
-    if (appointment) {
-      appointment.dateTime = dateTime || appointment.dateTime;
-      appointment.status = status || appointment.status;
-      appointment.notes = notes || appointment.notes;
-      appointment.reminders = reminders || appointment.reminders;
-
-      const updatedAppointment = await appointment.save();
-      const patientNotification = new Notification({
-        user: appointment.patientId,
-        message: `Your appointment with ${appointment.providerId.name} has been updated.`,
-      });
-      await patientNotification.save();
-      res.status(200).json({updatedAppointment
-      });
-    } else {
-      res.status(404);
-      throw new Error("Appointment not found");
-    }
-  }),
-
-  // Delete an Appointment
+  
   deleteAppointment: asyncHandler(async (req, res) => {
-    const {id}=req.body
-    const appointment = await Appointment.findById(id);
-    const patient=await Patient.findById(appointment.patientId)
-    const provider=await HealthcareProvider.findById(appointment.providerId)
-    if (patient && patient.appointments) {
-      patient.appointments.pull(appointment._id);
-      await patient.save();
-    }
-    if (provider && provider.appointments) {
-        provider.appointments.pull(appointment._id);
-        await provider.save();
-    }
-    const patientNotification = new Notification({
-      user: appointment.patientId,
-      message: `Your appointment with ${appointment.providerId.name} has been canceled.`,
-    });
-    await patientNotification.save();
-    if (appointment) {
+      const { appointmentId } = req.body;
+  
+      const appointment = await Appointment.findById(appointmentId);
+  
+      if (!appointment) {
+          return res.status(404).json({ message: "Appointment not found" });
+      }
+  
       await appointment.deleteOne();
+  
       res.status(200).json({ message: "Appointment deleted successfully" });
-    } else {
-      res.status(404);
-      throw new Error("Appointment not found");
-    }
-  }),
+  })
 };
 
 module.exports = appointmentController;
