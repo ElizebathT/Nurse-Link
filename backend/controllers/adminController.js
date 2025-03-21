@@ -3,58 +3,6 @@ const User = require("../models/userModel");
 const Patient = require("../models/patientModel");
 
 const adminController = {
-    // Approve a provider
-    approveProvider: asyncHandler(async (req, res) => {
-        const { id } = req.body;
-        const provider = await User.findById(id);
-
-        if (!provider) {
-            res.status(404);
-            throw new Error("User not found");
-        }
-
-        provider.verified = true;
-        await provider.save();
-
-        res.json({ message: "User approved successfully" });
-    }),
-    assignNurseToPatient: asyncHandler(async (req, res) => {
-        if (req.user.role !== "admin") {
-            return res.status(403).json({ message: "Only admins can assign nurses to patients" });
-        }
-    
-        const { patientId, nurseId } = req.body;
-    
-        const patient = await Patient.findById(patientId);
-        if (!patient) {
-            return res.status(404).json({ message: "Patient not found" });
-        }
-    
-        const nurse = await User.findById(nurseId);
-        if (!nurse || nurse.role !== "nurse") {
-            return res.status(404).json({ message: "Nurse not found or invalid role" });
-        }
-    
-        patient.assignedNurse = nurseId; // Assuming Patient schema has `assignedNurse`
-        await patient.save();
-    
-        res.status(200).json({ message: "Nurse assigned successfully", patient });
-    }),
-    
-    // Reject a provider
-    rejectUser: asyncHandler(async (req, res) => {
-        const { id } = req.body;
-        const provider = await User.findById(id);
-
-        if (!provider) {
-            res.status(404);
-            throw new Error("User not found");
-        }
-
-        await User.findByIdAndDelete(id);
-
-        res.json({ message: "User rejected and removed" });
-    }),
 
     // Get all users
     getUsers: asyncHandler(async (req, res) => {
@@ -68,6 +16,44 @@ const adminController = {
         await User.findByIdAndDelete(userId);
         res.json({ message: "User deleted successfully" });
     }),
+
+    getAppointmentReport:async (req, res) => {
+        try {
+            const { nurseId, patientId, startDate, endDate } = req.query;
+    
+            // Validate inputs
+            if (!startDate || !endDate) {
+                return res.status(400).json({ message: "Start date and end date are required." });
+            }
+    
+            let filter = {
+                date: { 
+                    $gte: new Date(startDate), 
+                    $lte: new Date(endDate) 
+                }
+            };
+    
+            if (nurseId) {
+                filter.nurse = nurseId;
+            }
+            if (patientId) {
+                filter.patient = patientId;
+            }
+    
+            const appointments = await Appointment.find(filter)
+                .populate("patient", "name contact")
+                .populate("nurse", "name contact")
+                .populate("doctor", "name")
+                .populate("carePlanId", "title")
+                .lean(); // Convert Mongoose docs to plain objects
+    
+            res.status(200).json(appointments);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: "Server Error" });
+        }
+    }
+    
 };
 
 module.exports = adminController;

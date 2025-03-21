@@ -1,9 +1,8 @@
 const Appointment = require("../models/appointmentModel");
+const Nurse = require("../models/nurseModel");
 const asyncHandler = require("express-async-handler");
 
-// CONTROLLER FOR APPOINTMENTS
 const appointmentController = {
-    // 📝 1. Patient Requests an Appointment
     requestAppointment: asyncHandler(async (req, res) => {
         if (req.user.role !== "patient") {
             return res.status(403).json({ message: "Only patients can book appointments" });
@@ -11,11 +10,22 @@ const appointmentController = {
 
         const { doctorId, date, notes } = req.body;
 
+        const existingAppointment = await Appointment.findOne({
+            doctor: doctorId,
+            date,
+            status: { $in: ["Pending", "Confirmed"] }
+        });
+
+        if (existingAppointment) {
+            return res.status(400).json({ message: "Doctor is not available at this time" });
+        }
+
         const appointment = await Appointment.create({
             patient: req.user.id,
             doctor: doctorId,
             date,
-            notes
+            notes,
+            status: "Confirmed"
         });
 
         res.status(201).json({ message: "Appointment requested successfully", appointment });
@@ -27,7 +37,7 @@ const appointmentController = {
             return res.status(403).json({ message: "Only doctors can manage appointments" });
         }
 
-        const { appointmentId, status } = req.body;
+        const { appointmentId} = req.body;
         const appointment = await Appointment.findById(appointmentId);
 
         if (!appointment) {
@@ -37,15 +47,11 @@ const appointmentController = {
         if (appointment.doctor.toString() !== req.user.id) {
             return res.status(403).json({ message: "You can only manage your own appointments" });
         }
-
-        if (!["Confirmed", "Rejected"].includes(status)) {
-            return res.status(400).json({ message: "Invalid status update" });
-        }
-
-        appointment.status = status;
+        
+        appointment.status = "Completed";
         await appointment.save();
 
-        res.status(200).json({ message: `Appointment ${status.toLowerCase()} successfully`, appointment });
+        res.status(200).json({ message: `Appointment completed successfully`, appointment });
     }),
 
     requestNurseVisit: asyncHandler(async (req, res) => {
@@ -53,47 +59,56 @@ const appointmentController = {
             return res.status(403).json({ message: "Only patients can request nurse visits" });
         }
     
-        const { nurseId, date, notes, address } = req.body;
+        const { date, notes, services } = req.body;
     
-        if (!nurseId || !date || !address) {
-            return res.status(400).json({ message: "Nurse ID, date, and address are required" });
+        // Find an available nurse (who does NOT have an appointment on the given date)
+        const availableNurse = await Nurse.findOne({
+            _id: { 
+                $nin: await Appointment.distinct("nurse", { 
+                    date, 
+                    status: { $in: ["Pending", "Confirmed"] } 
+                })
+            }
+        }).populate("user");
+    
+        if (!availableNurse) {
+            return res.status(400).json({ message: "No nurses available on this date" });
         }
     
         const appointment = await Appointment.create({
             patient: req.user.id,
-            nurse: nurseId,
+            nurse: availableNurse.user._id,
             date,
             notes,
-            address,
+            services,
             status: "Pending"
         });
     
         res.status(201).json({ message: "Nurse visit requested successfully", appointment });
     }),
     
-    
 
-    // ✅ 4. Doctor Completes Appointment & Adds Notes
-    completeAppointment: asyncHandler(async (req, res) => {
-        if (req.user.role !== "doctor") {
-            return res.status(403).json({ message: "Only doctors can complete appointments" });
+    completeNurseAppointment: asyncHandler(async (req, res) => {
+        if (req.user.role !== "nurse") {
+            return res.status(403).json({ message: "Only nurses can complete appointments" });
         }
 
-        const { appointmentId, carePlanId, notes } = req.body;
+        const { appointmentId, servicesCompleted } = req.body;
         const appointment = await Appointment.findById(appointmentId);
 
         if (!appointment) {
             return res.status(404).json({ message: "Appointment not found" });
         }
 
-        if (appointment.doctor.toString() !== req.user.id) {
+        if (appointment.nurse.toString() !== req.user.id) {
             return res.status(403).json({ message: "You can only complete your own appointments" });
         }
 
-        appointment.status = "Completed";
-        appointment.carePlanId = carePlanId || appointment.carePlanId;
-        appointment.notes = notes || appointment.notes;
+        if (servicesCompleted.length !== appointment.services.length) {
+            return res.status(400).json({ message: "All required services must be completed before marking as done" });
+        }
 
+        appointment.status = "Completed";
         await appointment.save();
 
         res.status(200).json({ message: "Appointment marked as completed", appointment });
@@ -114,52 +129,53 @@ const appointmentController = {
         const appointments = await Appointment.find(filter)
             .populate("patient", "username email")
             .populate("doctor", "username email")
-            .populate("nurse", "username email")
-            .populate("carePlanId");
+            .populate("nurse", "username email");
 
         res.status(200).json(appointments);
     }),
 
+    // 🔍 6. Search Appointments
     searchAppointments : asyncHandler(async (req, res) => {
-      const { patientName, doctorName, status, date } = req.body;
-  
-      let query = {};
-  
-      if (patientName) {
-          query["patient.name"] = { $regex: patientName, $options: "i" };
-      }
-      if (doctorName) {
-          query["doctor.name"] = { $regex: doctorName, $options: "i" };
-      }
-      if (status) {
-          query.status = status;
-      }
-      if (date) {
-          query.date = date;
-      }
-  
-      const appointments = await Appointment.find(query).populate("patient doctor nurse");
-      
-      if (!appointments.length) {
-          return res.status(404).json({ message: "No appointments found" });
-      }
-  
-      res.status(200).json(appointments);
-  }),
-  
-  deleteAppointment: asyncHandler(async (req, res) => {
-      const { appointmentId } = req.body;
-  
-      const appointment = await Appointment.findById(appointmentId);
-  
-      if (!appointment) {
-          return res.status(404).json({ message: "Appointment not found" });
-      }
-  
-      await appointment.deleteOne();
-  
-      res.status(200).json({ message: "Appointment deleted successfully" });
-  })
+        const { patientName, doctorName, status, date } = req.body;
+    
+        let query = {};
+    
+        if (patientName) {
+            query["patient.name"] = { $regex: patientName, $options: "i" };
+        }
+        if (doctorName) {
+            query["doctor.name"] = { $regex: doctorName, $options: "i" };
+        }
+        if (status) {
+            query.status = status;
+        }
+        if (date) {
+            query.date = date;
+        }
+    
+        const appointments = await Appointment.find(query).populate("patient doctor nurse");
+        
+        if (!appointments.length) {
+            return res.status(404).json({ message: "No appointments found" });
+        }
+    
+        res.status(200).json(appointments);
+    }),
+
+    // ❌ 7. Delete Appointment
+    deleteAppointment: asyncHandler(async (req, res) => {
+        const { appointmentId } = req.body;
+    
+        const appointment = await Appointment.findById(appointmentId);
+    
+        if (!appointment) {
+            return res.status(404).json({ message: "Appointment not found" });
+        }
+    
+        await appointment.deleteOne();
+    
+        res.status(200).json({ message: "Appointment deleted successfully" });
+    })
 };
 
 module.exports = appointmentController;

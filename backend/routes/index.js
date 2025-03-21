@@ -11,6 +11,7 @@ const notificationRouter = require("./notificationRouter");
 const adminRoutes = require("./adminRouter");
 const doctorRoutes = require("./doctorRouter");
 const nurseRoutes = require("./nurseRouter");
+const chatRoutes = require("./chatRouter");
 const router=express()
 
 router.use("/users", userRoutes);
@@ -24,6 +25,7 @@ router.use("/family", familyRouter);
 router.use("/admin", adminRoutes);
 router.use("/doctor", doctorRoutes);
 router.use("/nurse", nurseRoutes);
+router.use("/chat", chatRoutes);
 router.use("/notification", notificationRouter);
 
 module.exports=router

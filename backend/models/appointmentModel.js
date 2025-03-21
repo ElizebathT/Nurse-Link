@@ -9,7 +9,7 @@ const AppointmentSchema = new mongoose.Schema({
     doctor: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
-        required: true
+        default: null
     },
     nurse: {
         type: mongoose.Schema.Types.ObjectId,
@@ -27,6 +27,10 @@ const AppointmentSchema = new mongoose.Schema({
     },
     notes: {
         type: String
+    },
+    services: {
+        type: [String],  // List of services required for nurse visits
+        default: []
     },
     carePlanId: {
         type: mongoose.Schema.Types.ObjectId,
