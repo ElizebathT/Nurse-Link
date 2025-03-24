@@ -5,8 +5,8 @@ const emergencyRouter = express.Router();
 
 emergencyRouter.post("/add", userAuthentication,emergencyAssistanceController.createEmergencyAssistance);
 emergencyRouter.get("/viewall", userAuthentication,emergencyAssistanceController.getAllEmergencyAssistance);
-emergencyRouter.get("/search", userAuthentication,emergencyAssistanceController.getEmergencyAssistanceById);
+emergencyRouter.get("/search", userAuthentication,emergencyAssistanceController.getPatientEmergencyAssistance);
 emergencyRouter.put("/edit", userAuthentication,emergencyAssistanceController.updateEmergencyAssistance);
-emergencyRouter.delete("/delete/:id", userAuthentication,emergencyAssistanceController.deleteEmergencyAssistance);
+emergencyRouter.delete("/delete", userAuthentication,emergencyAssistanceController.deleteEmergencyAssistance);
 
 module.exports = emergencyRouter;

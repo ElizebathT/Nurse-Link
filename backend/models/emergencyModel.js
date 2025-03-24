@@ -1,26 +1,39 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 // Define the schema for the EmergencyAssistance model
 const emergencyAssistanceSchema = new mongoose.Schema({
-    patientId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Patient', // Reference to the Patient model
-        required: true,
-    },
-    timestamp: {
-        type: Date,
-        default: Date.now, // Automatically sets the current date and time
-    },
-    location: 
-        { lat: Number, lng: Number },
-    status: {
-        type: String,
-        enum: ['resolved', 'pending'], // Only allows 'resolved' or 'pending'
-        default: 'pending', // Default status is 'pending'
-    },
+  patientId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Patient",
+    required: true,
+  },
+  nurseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Nurse",
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+  location: {
+    lat: { type: Number, required: true },
+    lng: { type: Number, required: true },
+  },
+  status: {
+    type: String,
+    enum: ["pending", "critical", "resolved"],
+    default: "pending",
+  },
+  escalationNotified: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 // Create the EmergencyAssistance model
-const EmergencyAssistance = mongoose.model('EmergencyAssistance', emergencyAssistanceSchema);
+const EmergencyAssistance = mongoose.model(
+  "EmergencyAssistance",
+  emergencyAssistanceSchema
+);
 
 module.exports = EmergencyAssistance;
