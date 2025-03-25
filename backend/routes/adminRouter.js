@@ -4,6 +4,7 @@ const adminController = require("../controllers/adminController");
 const adminAuthentication = require("../middlewares/admin");
 const adminRoutes = express.Router();
 
+adminRoutes.put("/verify", userAuthentication,adminAuthentication,adminController.approveOrRejectUser);
 adminRoutes.get("/users", userAuthentication,adminAuthentication,adminController.getUsers);
 adminRoutes.delete("/delete", userAuthentication,adminAuthentication,adminController.deleteUser);
 adminRoutes.get("/appointments", userAuthentication,adminAuthentication,adminController.getAppointmentReport);
