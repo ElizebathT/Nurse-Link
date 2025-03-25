@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/userModel");
 const Patient = require("../models/patientModel");
-
+require("dotenv").config()
 const userController = {
     register: asyncHandler(async (req, res) => {
         const { username, email, password, role,license } = req.body;
