@@ -4,22 +4,45 @@ const User = require("../models/userModel");
 
 const nurseController = {
     // 📌 Create a Nurse Profile
-    createNurse: asyncHandler(async (req, res) => {
-        const { experience, qualifications } = req.body;
-
-        const nurseExists = await Nurse.findOne({ user: req.user.id });
+    registerNurse: asyncHandler(async (req, res) => {
+        const { username, email, password } = req.body;
+    
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(409).json({ message: "User already exists" });
+        }
+    
+        const hashed_password = await bcrypt.hash(password, 10);
+    
+        const userCreated = await User.create({
+            username,
+            email,
+            password: hashed_password,
+            role:"nurse",
+            verified: false // Automatically verify patients
+        });
+    
+        if (!userCreated) {
+            throw new Error("User creation failed");
+        }
+        const nurseExists = await Nurse.findOne({ user: userCreated._id });
         if (nurseExists) {
             return res.status(400).json({ message: "Nurse profile already exists" });
         }
-
-        const nurse = await Nurse.create({
-            user: req.user.id,
-            experience,
-            qualifications
+    
+        await Nurse.create({
+            user: userCreated._id,
+            image:req.files
         });
-
-        res.status(201).json(nurse);
-    }),
+        const payload={
+            name:userCreated.username,  
+            email:userCreated.email,
+            role:userCreated.role,
+            id:userCreated.id
+        }
+        const token=jwt.sign(payload,process.env.JWT_SECRET_KEY)
+        res.json(token)
+    }),    
 
     // 📌 Get All Nurses
     getAllNurses: asyncHandler(async (req, res) => {
