@@ -4,24 +4,7 @@ const User = require("../models/userModel");
 
 const doctorController = {
     // 📌 Create a Doctor Profile
-    createDoctor: asyncHandler(async (req, res) => {
-        const { specialization, experience, qualifications } = req.body;
-
-        const doctorExists = await Doctor.findOne({ user: req.user.id });
-        if (doctorExists) {
-            return res.status(400).json({ message: "Doctor profile already exists" });
-        }
-
-        const doctor = await Doctor.create({
-            user: req.user.id,
-            specialization,
-            experience,
-            qualifications
-        });
-
-        res.status(201).json(doctor);
-    }),
-
+    
     // 📌 Get All Doctors
     getAllDoctors: asyncHandler(async (req, res) => {
         const doctors = await Doctor.find().populate("user", "username email phone");

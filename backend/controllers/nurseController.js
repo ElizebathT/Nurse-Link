@@ -6,47 +6,7 @@ const bcrypt = require("bcryptjs");
 require("dotenv").config()
 
 const nurseController = {
-    // 📌 Create a Nurse Profile
-    registerNurse: asyncHandler(async (req, res) => {
-        const { username, email, password } = req.body;
     
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(409).json({ message: "User already exists" });
-        }
-    
-        const hashed_password = await bcrypt.hash(password, 10);
-    
-        const userCreated = await User.create({
-            username,
-            email,
-            password: hashed_password,
-            role:"nurse",
-            verified: false // Automatically verify patients
-        });
-    
-        if (!userCreated) {
-            throw new Error("User creation failed");
-        }
-        const nurseExists = await Nurse.findOne({ user: userCreated._id });
-        if (nurseExists) {
-            return res.status(400).json({ message: "Nurse profile already exists" });
-        }
-    
-        await Nurse.create({
-            user: userCreated._id,
-            image:req.file.path
-        });
-        const payload={
-            name:userCreated.username,  
-            email:userCreated.email,
-            role:userCreated.role,
-            id:userCreated.id
-        }
-        const token=jwt.sign(payload,process.env.JWT_SECRET_KEY)
-        res.json(token)
-    }),    
-
     // 📌 Get All Nurses
     getAllNurses: asyncHandler(async (req, res) => {
         const nurses = await Nurse.find().populate("user", "username email phone");

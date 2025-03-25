@@ -3,6 +3,8 @@ const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/userModel");
 const Patient = require("../models/patientModel");
+const Doctor = require("../models/doctorModel");
+const Nurse = require("../models/nurseModel");
 require("dotenv").config()
 const userController = {
     register: asyncHandler(async (req, res) => {
@@ -99,6 +101,65 @@ const userController = {
         }
 
         res.json({ message: "User details retrieved successfully", user });
+    }),
+
+    registerUser : asyncHandler(async (req, res) => {
+        const { username, email, password, role, stateMedicalCouncil, registrationNumber } = req.body;
+    
+        // Check if user already exists
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(409).json({ message: "User already exists" });
+        }
+    
+        // Hash password
+        const hashed_password = await bcrypt.hash(password, 10);
+    
+        // Create user
+        const userCreated = await User.create({
+            username,
+            email,
+            password: hashed_password,
+            role,
+            verified: false 
+        });
+    
+        if (!userCreated) {
+            throw new Error("User creation failed");
+        }
+    
+        if (role === "nurse") {
+            if (!req.file) {
+                return res.status(400).json({ message: "Image of card is required" });
+            }
+    
+            await Nurse.create({
+                user: userCreated._id,
+                image: req.file.path
+            });
+        } else if (role === "doctor") {
+            if (!stateMedicalCouncil || !registrationNumber) {
+                return res.status(400).json({ message: "State Medical Council and Registration Number are required" });
+            }
+    
+            await Doctor.create({
+                user: userCreated._id,
+                stateMedicalCouncil,
+                registrationNumber
+            });
+        } else {
+            return res.status(400).json({ message: "Invalid role" });
+        }
+    
+        const payload = {
+            name: userCreated.username,
+            email: userCreated.email,
+            role: userCreated.role,
+            id: userCreated.id
+        };
+    
+        const token = jwt.sign(payload, process.env.JWT_SECRET_KEY);
+        res.json(token);
     })
 };
 
