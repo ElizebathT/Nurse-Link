@@ -12,10 +12,12 @@ const adminRoutes = require("./adminRouter");
 const doctorRoutes = require("./doctorRouter");
 const nurseRoutes = require("./nurseRouter");
 const chatRoutes = require("./chatRouter");
+const complaintRouter = require("./complaintRoutes");
 const router=express()
 
 router.use("/users", userRoutes);
 router.use("/patient", patientRoutes);
+router.use("/complaint", complaintRouter);
 router.use("/careplan", carePlanRoutes);
 router.use("/emergency", emergencyRouter);
 router.use("/appointment", appointmentRoutes);
